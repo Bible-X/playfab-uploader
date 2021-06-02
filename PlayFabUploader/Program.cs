@@ -12,16 +12,17 @@ namespace PlayFabUploader
         static async System.Threading.Tasks.Task Main(string[] args)
         {
 
-            if (args.Length < 6)
+            if (args.Length < 5)
             {
                 Console.WriteLine("Usage: playfabuploader.exe <SECRET KEY> <TITLE ID> <BUILD NAME> <LOCAL FILE PATH> <REMOTE FILE NAME>");
                 return;
             }
-            PlayFabSettings.staticSettings.DeveloperSecretKey = args[1];
-            PlayFabSettings.staticSettings.TitleId = args[2];
-            var buildName = args[3];
-            var sourceFile = args[4];
-            var targetFile = args[5];
+
+            PlayFabSettings.staticSettings.DeveloperSecretKey = args[0];
+            PlayFabSettings.staticSettings.TitleId = args[1];
+            var buildName = args[2];
+            var sourceFile = args[3];
+            var targetFile = args[4];
 
             var tokenRes = await PlayFabAuthenticationAPI.GetEntityTokenAsync(new PlayFab.AuthenticationModels.GetEntityTokenRequest());
             if (tokenRes.Error != null)
