@@ -4,14 +4,26 @@ using System.Collections.Generic;
 using PlayFab;
 using PlayFab.MultiplayerModels;
 using Azure.Storage.Blobs;
+using System.Text.Json;
+
 
 namespace PlayFabUploader
 {
+
+    public class MultiplayerServerData
+    {
+        public string BuildID { get; set; }
+        public string Region { get; set; }
+        public string SessionID { get; set; }
+    }
+
+
     class Program
     {
+        public const string MULTIPLAYER_SERVER_DATA = "MultiplayerServerData";
+
         static async System.Threading.Tasks.Task Main(string[] args)
         {
-
             if (args.Length < 5)
             {
                 Console.WriteLine("Usage: playfabuploader.exe <SECRET KEY> <TITLE ID> <BUILD NAME> <LOCAL FILE PATH> <REMOTE FILE NAME>");
@@ -30,14 +42,8 @@ namespace PlayFabUploader
                 Console.WriteLine(tokenRes.Error.ErrorMessage);
                 return;
             }
-            
-            var buildSummaries = await PlayFabMultiplayerAPI.ListBuildSummariesV2Async(new ListBuildSummariesRequest());
-            foreach (var b in buildSummaries.Result.BuildSummaries)
-            {
-                Console.WriteLine(b.BuildName);
-            }
 
-            var assetsUploadURLReq= new GetAssetUploadUrlRequest();
+            var assetsUploadURLReq = new GetAssetUploadUrlRequest();
             assetsUploadURLReq.FileName = targetFile;
 
             var assetsUploadURLRes = await PlayFabMultiplayerAPI.GetAssetUploadUrlAsync(assetsUploadURLReq);
@@ -58,7 +64,8 @@ namespace PlayFabUploader
             buildSettings.GameAssetReferences = new List<AssetReferenceParams> { new AssetReferenceParams {
                 FileName = targetFile,
                 MountPath = "C:\\Assets",
-            } };
+            }
+};
             buildSettings.UseStreamingForAssetDownloads = true;
             buildSettings.BuildName = string.Format("Build {0}", buildName);
             buildSettings.VmSize = AzureVmSize.Standard_D2as_v4;
@@ -70,6 +77,7 @@ namespace PlayFabUploader
             {
                 DynamicStandbySettings = new DynamicStandbySettings { IsEnabled = false },
                 Region = "NorthEurope", // https://docs.microsoft.com/en-us/rest/api/playfab/multiplayer/multiplayerserver/createbuildwithprocessbasedserver?view=playfab-rest#azureregion
+                StandbyServers = 1,
             }
             };
             buildSettings.MultiplayerServerCountPerVm = 1;
@@ -82,6 +90,28 @@ namespace PlayFabUploader
                 };
 
             var buildRes = await PlayFabMultiplayerAPI.CreateBuildWithManagedContainerAsync(buildSettings);
+
+            Console.WriteLine("Setting build id in MultiplayerServerData");
+            var titleDataRes = await PlayFabServerAPI.GetTitleDataAsync(new PlayFab.ServerModels.GetTitleDataRequest
+            {
+                Keys = new List<string>
+                {
+                    MULTIPLAYER_SERVER_DATA,
+                }
+            });
+
+            titleDataRes.Result.Data.TryGetValue(MULTIPLAYER_SERVER_DATA, out string mpdJson);
+            var mpd = JsonSerializer.Deserialize<MultiplayerServerData>(mpdJson);
+            mpd.BuildID = buildRes.Result.BuildId;
+            mpdJson = JsonSerializer.Serialize(mpd);
+
+            await PlayFabServerAPI.SetTitleDataAsync(new PlayFab.ServerModels.SetTitleDataRequest
+            {
+                Key = MULTIPLAYER_SERVER_DATA,
+                Value = mpdJson,
+            });
+
+
             Console.WriteLine(buildRes.Result.BuildId);
         }
     }
