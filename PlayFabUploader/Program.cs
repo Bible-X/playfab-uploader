@@ -17,7 +17,6 @@ namespace PlayFabUploader
         public string SessionID { get; set; }
     }
 
-
     class Program
     {
         public const string MULTIPLAYER_SERVER_DATA = "MultiplayerServerData";
@@ -59,13 +58,15 @@ namespace PlayFabUploader
 
             Console.WriteLine("Upload finished. Took {0} seconds", sw.Elapsed);
 
+
             var buildSettings = new CreateBuildWithManagedContainerRequest();
             buildSettings.AreAssetsReadonly = false;
             buildSettings.GameAssetReferences = new List<AssetReferenceParams> { new AssetReferenceParams {
-                FileName = targetFile,
-                MountPath = "C:\\Assets",
-            }
-};
+                    FileName = targetFile,
+                    MountPath = "C:\\Assets",
+                }
+            };
+
             buildSettings.UseStreamingForAssetDownloads = true;
             buildSettings.BuildName = string.Format("Build {0}", buildName);
             buildSettings.VmSize = AzureVmSize.Standard_D2as_v4;
@@ -74,11 +75,16 @@ namespace PlayFabUploader
             buildSettings.StartMultiplayerServerCommand = "C:\\Assets\\JerusalemEditorServer.exe";
             buildSettings.RegionConfigurations = new List<BuildRegionParams>{
                 new BuildRegionParams
-            {
-                DynamicStandbySettings = new DynamicStandbySettings { IsEnabled = false },
-                Region = "NorthEurope", // https://docs.microsoft.com/en-us/rest/api/playfab/multiplayer/multiplayerserver/createbuildwithprocessbasedserver?view=playfab-rest#azureregion
-                StandbyServers = 1,
-            }
+                {
+                    DynamicStandbySettings = new DynamicStandbySettings { IsEnabled = false },
+                    Region = "NorthEurope", // https://docs.microsoft.com/en-us/rest/api/playfab/multiplayer/multiplayerserver/createbuildwithprocessbasedserver?view=playfab-rest#azureregion
+                    StandbyServers = 0,
+                    MaxServers = 1,
+                    ScheduledStandbySettings = new ScheduledStandbySettings
+                    {
+                        IsEnabled = false,
+                    }
+                }
             };
             buildSettings.MultiplayerServerCountPerVm = 1;
             buildSettings.Ports = new List<Port>{
@@ -87,9 +93,10 @@ namespace PlayFabUploader
                     Protocol = ProtocolType.UDP,
                     Name = "main",
                 }
-                };
+            };
 
             var buildRes = await PlayFabMultiplayerAPI.CreateBuildWithManagedContainerAsync(buildSettings);
+            Console.WriteLine("Created build ID: {0}", buildRes.Result.BuildId);
 
             Console.WriteLine("Setting build id in MultiplayerServerData");
             var titleDataRes = await PlayFabServerAPI.GetTitleDataAsync(new PlayFab.ServerModels.GetTitleDataRequest
@@ -112,7 +119,6 @@ namespace PlayFabUploader
             });
 
 
-            Console.WriteLine(buildRes.Result.BuildId);
         }
     }
 }
