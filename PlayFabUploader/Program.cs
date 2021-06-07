@@ -82,6 +82,7 @@ namespace PlayFabUploader
                     MaxServers = 1,
                     ScheduledStandbySettings = new ScheduledStandbySettings
                     {
+                        ScheduleList = new List<Schedule>{ },
                         IsEnabled = false,
                     }
                 }
